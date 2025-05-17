@@ -1,3 +1,5 @@
+// lib/features/map/screens/map_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -8,8 +10,54 @@ import 'package:mercab/features/map/providers/car_provider.dart';
 import 'package:mercab/core/widgets/coordinate_input_widget.dart';
 import 'package:mercab/config/constants.dart';
 
-class MapScreen extends StatelessWidget {
+class MapScreen extends StatefulWidget {
   const MapScreen({Key? key}) : super(key: key);
+
+  @override
+  _MapScreenState createState() => _MapScreenState();
+}
+
+class _MapScreenState extends State<MapScreen> {
+  bool _initialLocationSet = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize location tracking when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeLocationTracking();
+    });
+  }
+  
+  Future<void> _initializeLocationTracking() async {
+    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+    
+    // Start continuous location tracking
+    await locationProvider.initLocationTracking();
+    
+    // Auto-zoom to current location if available
+    if (locationProvider.currentUserLocation != null && !_initialLocationSet) {
+      _initialLocationSet = true;
+      final mapProvider = Provider.of<MapProvider>(context, listen: false);
+      mapProvider.moveToLocation(locationProvider.currentUserLocation!, 16.0);
+      
+      // Calculate route if needed
+      _calculateRouteIfNeeded(context);
+    }
+    
+    // Set up a listener to catch location updates
+    locationProvider.addListener(() {
+      if (locationProvider.currentUserLocation != null && 
+          !_initialLocationSet) {
+        _initialLocationSet = true;
+        final mapProvider = Provider.of<MapProvider>(context, listen: false);
+        mapProvider.moveToLocation(locationProvider.currentUserLocation!, 16.0);
+        
+        // Calculate route if needed
+        _calculateRouteIfNeeded(context);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +102,11 @@ class MapScreen extends StatelessWidget {
               urlTemplate: 'https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=$mapTilerApiKey',    
               userAgentPackageName: 'com.example.mercab',
               subdomains: const ['a', 'b', 'c', 'd'],
+            ),
+            
+            // Add CircleLayer for accuracy radius
+            CircleLayer(
+              circles: _buildCircleMarkers(context),
             ),
             
             // Polyline Layer (Route Display)
@@ -143,6 +196,19 @@ class MapScreen extends StatelessWidget {
     }
     
     return markers;
+  }
+  
+  // Add a new method to build circle layers
+  List<CircleMarker> _buildCircleMarkers(BuildContext context) {
+    final locationProvider = Provider.of<LocationProvider>(context);
+    List<CircleMarker> circles = [];
+    
+    // Add accuracy circle
+    if (locationProvider.accuracyCircleMarker != null) {
+      circles.add(locationProvider.accuracyCircleMarker!);
+    }
+    
+    return circles;
   }
 
   Widget _buildCarMarker(double angle) {
@@ -341,21 +407,6 @@ class MapScreen extends StatelessWidget {
     );
   }
   
-  // Widget _buildMapAttribution() {
-  //   return Positioned(
-  //     left: 10,
-  //     bottom: 10,
-  //     child: Container(
-  //       padding: const EdgeInsets.all(4),
-  //       color: Colors.white.withOpacity(0.7),
-  //       child: const Text(
-  //         mapAttribution,
-  //         style: TextStyle(fontSize: 10, color: Colors.black87),
-  //       ),
-  //     ),
-  //   );
-  // }
-  
   Widget _buildMapControls(BuildContext context) {
     final locationProvider = Provider.of<LocationProvider>(context);
     final mapProvider = Provider.of<MapProvider>(context);
@@ -401,7 +452,7 @@ class MapScreen extends StatelessWidget {
               : () async {
                   await locationProvider.getCurrentLocation();
                   if (locationProvider.currentUserLocation != null) {
-                    mapProvider.moveToLocation(locationProvider.currentUserLocation!);
+                    mapProvider.moveToLocation(locationProvider.currentUserLocation!, 16.0);
                     // Calculate route if needed
                     _calculateRouteIfNeeded(context);
                   } else if (locationProvider.hasLocationError) {

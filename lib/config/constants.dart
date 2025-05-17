@@ -11,4 +11,3 @@ const double defaultAnimationSpeed = 50.0; // milliseconds per point
 
 // Misc
 const String appName = 'Mercab';
-const String mapAttribution = '© MapTiler | © OpenStreetMap contributors';

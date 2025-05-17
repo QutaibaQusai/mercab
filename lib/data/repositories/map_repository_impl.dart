@@ -1,3 +1,5 @@
+// lib/data/repositories/map_repository_impl.dart
+
 import 'package:latlong2/latlong.dart';
 import 'package:mercab/core/services/location_service.dart';
 import 'package:mercab/core/services/routing_service.dart';
@@ -9,6 +11,16 @@ class MapRepositoryImpl implements MapRepository {
   @override
   Future<LatLng> getCurrentLocation() async {
     return await LocationService.getCurrentLocation();
+  }
+  
+  @override
+  Future<LocationData> getCurrentLocationWithDetails() async {
+    return await LocationService.getCurrentLocationWithDetails();
+  }
+  
+  @override
+  Stream<LocationData> getLocationStream() {
+    return LocationService.getLocationStream();
   }
   
   @override
