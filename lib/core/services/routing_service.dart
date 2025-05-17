@@ -2,10 +2,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:flutter/material.dart';
+import 'package:mercab/config/constants.dart';
+import 'package:mercab/core/utils/location_utils.dart';
 
 class RoutingService {
   static const String _baseUrl = 'https://api.openrouteservice.org/v2/directions/';
-  static const String _apiKey = '5b3ce3597851110001cf6248305bac4e21e74502aefe00a9539a4515';
   
   static Future<List<LatLng>> getRoute(LatLng start, LatLng end) async {
     try {
@@ -16,7 +17,7 @@ class RoutingService {
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8',
-          'Authorization': _apiKey,
+          'Authorization': openRouteServiceApiKey,
         },
         body: jsonEncode({
           'coordinates': [
@@ -34,14 +35,14 @@ class RoutingService {
           
           if (data == null) {
             debugPrint('API response is null');
-            return _getFallbackRoute(start, end);
+            return LocationUtils.generateFallbackRoute(start, end);
           }
           
           if (!data.containsKey('features') || 
-                ['features'] == null || 
+                data['features'] == null || 
               data['features'].isEmpty) {
             debugPrint('No features in API response');
-            return _getFallbackRoute(start, end);
+            return LocationUtils.generateFallbackRoute(start, end);
           }
           
           final features = data['features'];
@@ -49,14 +50,14 @@ class RoutingService {
               !features[0].containsKey('geometry') || 
               features[0]['geometry'] == null) {
             debugPrint('No geometry in API response');
-            return _getFallbackRoute(start, end);
+            return LocationUtils.generateFallbackRoute(start, end);
           }
           
           final geometry = features[0]['geometry'];
           if (!geometry.containsKey('coordinates') || 
               geometry['coordinates'] == null) {
             debugPrint('No coordinates in API response');
-            return _getFallbackRoute(start, end);
+            return LocationUtils.generateFallbackRoute(start, end);
           }
           
           final coordinates = geometry['coordinates'] as List;
@@ -70,18 +71,17 @@ class RoutingService {
           
           if (points.isEmpty) {
             debugPrint('No valid coordinates found in API response');
-            return _getFallbackRoute(start, end);
+            return LocationUtils.generateFallbackRoute(start, end);
           }
           
           debugPrint('Route calculated: ${points.length} points');
           return points;
         } catch (e) {
           debugPrint('Error parsing API response: $e');
-          return _getFallbackRoute(start, end);
+          return LocationUtils.generateFallbackRoute(start, end);
         }
       } else {
         debugPrint('Failed to calculate route: ${response.statusCode} - ${response.body}');
-        
         return _getRouteWithAlternativeMethod(start, end);
       }
     } catch (e) {
@@ -97,7 +97,7 @@ class RoutingService {
       final String coordinates = '${start.longitude},${start.latitude}|${end.longitude},${end.latitude}';
       final Uri uri = Uri.parse('https://api.openrouteservice.org/v2/directions/driving-car')
           .replace(queryParameters: {
-        'api_key': _apiKey,
+        'api_key': openRouteServiceApiKey,
         'coordinates': coordinates,
         'format': 'geojson',
       });
@@ -137,33 +137,10 @@ class RoutingService {
       }
       
       // If everything fails, return fallback route
-      return _getFallbackRoute(start, end);
+      return LocationUtils.generateFallbackRoute(start, end);
     } catch (e) {
       debugPrint('Error in alternative method: $e');
-      return _getFallbackRoute(start, end);
+      return LocationUtils.generateFallbackRoute(start, end);
     }
-  }
-  
-  // Generate a fallback route (straight line)
-  static List<LatLng> _getFallbackRoute(LatLng start, LatLng end) {
-    debugPrint('Using fallback route (straight line)');
-    
-    // Create a more natural path with intermediate points
-    final middlePoint = LatLng(
-      (start.latitude + end.latitude) / 2,
-      (start.longitude + end.longitude) / 2
-    );
-    
-    // Add a slight offset to create a curved path
-    final offset = 0.002; // Slight curve
-    
-    return [
-      start,
-      LatLng(
-        middlePoint.latitude + offset,
-        middlePoint.longitude - offset,
-      ),
-      end
-    ];
   }
 }

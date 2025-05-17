@@ -39,6 +39,7 @@ dependencies:
   location: ^5.0.0          # For handling device location
   geolocator: ^10.1.0 
   http: ^1.4.0
+  provider: ^6.1.5
 
 
 
