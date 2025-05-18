@@ -1,3 +1,4 @@
+// lib/features/map/providers/map_provider.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -7,9 +8,9 @@ import 'dart:async';
 import 'package:mercab/features/map/repositories/map_repository.dart';
 
 class MapProvider extends ChangeNotifier {
-  final MapRepository? _repository;
+  final MapRepository? repository;
   
-  MapProvider({MapRepository? repository}) : _repository = repository;
+  MapProvider({this.repository});
   
   final MapController mapController = MapController();
   
@@ -78,6 +79,7 @@ class MapProvider extends ChangeNotifier {
   }
   
   void moveToLocation(LatLng location, [double zoom = 15.0]) {
+    print("Moving map to: ${location.latitude}, ${location.longitude}, zoom: $zoom");
     mapController.move(location, zoom);
     // No need to notify as this is UI-only
   }
@@ -97,8 +99,8 @@ class MapProvider extends ChangeNotifier {
         final centerLocation = mapController.camera.center;
         _selectedLocation = centerLocation; // Update selected location
         
-        if (_repository != null) {
-          final address = await _repository!.getAddressFromLocation(centerLocation);
+        if (repository != null) {
+          final address = await repository!.getAddressFromLocation(centerLocation);
           _currentAddress = address;
         } else {
           // Fallback if no repository is available
@@ -120,8 +122,8 @@ class MapProvider extends ChangeNotifier {
     try {
       List<LatLng> routePoints;
       
-      if (_repository != null) {
-        routePoints = await _repository!.calculateRoute(start, end);
+      if (repository != null) {
+        routePoints = await repository!.calculateRoute(start, end);
       } else {
         // Fallback to direct service call if no repository
         routePoints = await RoutingService.getRoute(start, end);

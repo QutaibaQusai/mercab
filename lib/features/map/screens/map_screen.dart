@@ -1,4 +1,3 @@
-// lib/features/map/screens/map_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -29,35 +28,52 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
   
-  Future<void> _initializeLocationTracking() async {
-    final locationProvider = Provider.of<LocationProvider>(context, listen: false);
-    
+  // lib/features/map/screens/map_screen.dart - update _initializeLocationTracking method
+Future<void> _initializeLocationTracking() async {
+  print("Initializing location tracking");
+  final locationProvider = Provider.of<LocationProvider>(context, listen: false);
+  
+  try {
     // Start continuous location tracking
     await locationProvider.initLocationTracking();
+    print("Location tracking initialized, current location: ${locationProvider.currentUserLocation}");
     
-    // Auto-zoom to current location if available
+    // Auto-zoom to current location as soon as it's available
     if (locationProvider.currentUserLocation != null && !_initialLocationSet) {
       _initialLocationSet = true;
       final mapProvider = Provider.of<MapProvider>(context, listen: false);
-      mapProvider.moveToLocation(locationProvider.currentUserLocation!, 16.0);
+      
+      // Add a very short delay to ensure map is fully loaded
+      // This prevents issues with map controller not being ready
+      Future.delayed(const Duration(milliseconds: 200), () {
+        mapProvider.moveToLocation(locationProvider.currentUserLocation!, 16.0);
+        print("Moved map to current location");
+      });
       
       // Calculate route if needed
       _calculateRouteIfNeeded(context);
+    } else {
+      print("No current location available after initialization");
     }
     
     // Set up a listener to catch location updates
     locationProvider.addListener(() {
-      if (locationProvider.currentUserLocation != null && 
-          !_initialLocationSet) {
+      if (locationProvider.currentUserLocation != null && !_initialLocationSet) {
         _initialLocationSet = true;
         final mapProvider = Provider.of<MapProvider>(context, listen: false);
+        
+        // Move map to location with animation
         mapProvider.moveToLocation(locationProvider.currentUserLocation!, 16.0);
+        print("Moved map to first available location");
         
         // Calculate route if needed
         _calculateRouteIfNeeded(context);
       }
     });
+  } catch (e) {
+    print("Error initializing location tracking: $e");
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -99,17 +115,15 @@ class _MapScreenState extends State<MapScreen> {
           ),
           children: [
             TileLayer(
-              urlTemplate: 'https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=$mapTilerApiKey',    
+              urlTemplate: 'https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=$mapTilerApiKey',
               userAgentPackageName: 'com.example.mercab',
               subdomains: const ['a', 'b', 'c', 'd'],
             ),
             
-            // Add CircleLayer for accuracy radius
             CircleLayer(
               circles: _buildCircleMarkers(context),
             ),
             
-            // Polyline Layer (Route Display)
             PolylineLayer(
               polylines: [
                 if (mapProvider.showRoute && mapProvider.routePoints.isNotEmpty)
@@ -156,10 +170,53 @@ class _MapScreenState extends State<MapScreen> {
         // Route calculation indicator
         if (mapProvider.isCalculatingRoute)
           _buildCalculatingRouteIndicator(),
+          _buildLocationInfoOverlay(context),
+
       ],
     );
   }
-
+// Add this method to MapScreen class
+Widget _buildLocationInfoOverlay(BuildContext context) {
+  final locationProvider = Provider.of<LocationProvider>(context);
+  
+  // Only show if we have location data
+  if (locationProvider.currentUserLocation == null) {
+    return const SizedBox.shrink();
+  }
+  
+  return Positioned(
+    left: 10,
+    bottom: 50,
+    child: Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Lat: ${locationProvider.currentUserLocation!.latitude.toStringAsFixed(6)}',
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+          ),
+          Text(
+            'Lng: ${locationProvider.currentUserLocation!.longitude.toStringAsFixed(6)}',
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+          ),
+          Text(
+            'Accuracy: ${locationProvider.accuracy.toStringAsFixed(1)} m',
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+          ),
+          Text(
+            'Heading: ${locationProvider.heading.toStringAsFixed(1)}°', 
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+          ),
+        ],
+      ),
+    ),
+  );
+}
   List<Marker> _buildAllMarkers(BuildContext context) {
     final locationProvider = Provider.of<LocationProvider>(context);
     final carProvider = Provider.of<CarProvider>(context);
