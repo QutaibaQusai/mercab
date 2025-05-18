@@ -436,7 +436,6 @@ class LocationProvider extends ChangeNotifier {
     );
   }
   
-  // Clear error message
   void clearError() {
     _locationErrorMessage = null;
     notifyListeners();

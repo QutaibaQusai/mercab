@@ -114,12 +114,10 @@ Future<void> _initializeLocationTracking() async {
             },
           ),
           children: [
-            TileLayer(
-              urlTemplate: 'https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=$mapTilerApiKey',
-              userAgentPackageName: 'com.example.mercab',
-              subdomains: const ['a', 'b', 'c', 'd'],
-            ),
-            
+          TileLayer(
+          urlTemplate: 'https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.example.mercab',
+            ),    
             CircleLayer(
               circles: _buildCircleMarkers(context),
             ),
